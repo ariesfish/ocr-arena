@@ -1,0 +1,199 @@
+# Standalone local layout pipeline configuration
+
+logging:
+  level: INFO
+
+web:
+  host: 127.0.0.1
+  port: 8000
+  upload_max_mb: 10
+  allowed_image_suffixes:
+    - jpg
+    - jpeg
+    - png
+    - webp
+    - bmp
+    - gif
+  task_ttl_seconds: 1800
+  model_timeout_seconds: 300
+  ocr_worker_concurrency: 1
+  task_poll_interval_seconds: 1.5
+
+pipeline:
+  enable_layout: true
+  ocr_execution_mode: auto
+  ocr_parallel_min_vram_gb: 8.0
+  ocr_backend_replicas: 1
+  output:
+    base_output_dir: ./output
+
+  glm_ocr_backend:
+    enabled: true
+    model_dir: ./models/glm-ocr
+    download_source: modelscope
+    modelscope_repo_id: ZhipuAI/GLM-OCR
+    huggingface_repo_id: zai-org/GLM-OCR
+    required_model_files:
+      - chat_template.jinja
+      - config.json
+      - model.safetensors
+      - generation_config.json
+      - tokenizer.json
+      - tokenizer_config.json
+      - preprocessor_config.json
+    max_new_tokens: 2048
+    torch_dtype: bfloat16
+    device: auto
+    trust_remote_code: true
+    skip_special_tokens: true
+
+  paddle_ocr_backend:
+    enabled: true
+    model_dir: ./models/paddleocr-vl-1.5
+    download_source: modelscope
+    modelscope_repo_id: PaddlePaddle/PaddleOCR-VL-1.5
+    huggingface_repo_id: PaddlePaddle/PaddleOCR-VL-1.5
+    required_model_files:
+      - added_tokens.json
+      - chat_template.jinja
+      - config.json
+      - generation_config.json
+      - model.safetensors
+      - special_tokens_map.json
+      - tokenizer.json
+      - tokenizer_config.json
+      - tokenizer.model
+      - processor_config.json
+      - preprocessor_config.json
+    max_new_tokens: 2048
+    torch_dtype: bfloat16
+    device: cpu
+    trust_remote_code: true
+    skip_special_tokens: true
+    task_type_mapping:
+      text: ocr
+      table: table
+      formula: formula
+      image: chart
+      chart: chart
+      seal: seal
+      spotting: spotting
+    spotting_upscale_threshold: 1500
+    default_max_pixels: 1003520
+    spotting_max_pixels: 1605632
+
+  page_loader:
+    max_tokens: 4096
+    temperature: 0.8
+    top_p: 0.9
+    top_k: 50
+    repetition_penalty: 1.1
+    t_patch_size: 2
+    patch_expand_factor: 1
+    image_format: JPEG
+    min_pixels: 12544
+    max_pixels: 71372800
+    default_prompt: >
+      Recognize the text in the image and output in Markdown format.
+      Preserve the original layout (headings/paragraphs/tables/formulas).
+      Do not fabricate content that does not exist in the image.
+    task_prompt_mapping:
+      text: "Text Recognition:"
+      table: "Table Recognition:"
+      formula: "Formula Recognition:"
+    pdf_dpi: 200
+    pdf_max_pages: null
+    pdf_verbose: false
+
+  result_formatter:
+    output_format: both
+    label_visualization_mapping:
+      table:
+        - table
+      formula:
+        - display_formula
+        - inline_formula
+      image:
+        - chart
+        - image
+      text:
+        - abstract
+        - algorithm
+        - content
+        - doc_title
+        - figure_title
+        - paragraph_title
+        - reference_content
+        - text
+        - vertical_text
+        - vision_footnote
+        - seal
+        - formula_number
+
+  layout:
+    model_dir: ./models/pp-doclayout-v3
+    threshold: 0.3
+    batch_size: 1
+    cuda_visible_devices: "0"
+    layout_nms: true
+    layout_unclip_ratio:
+      - 1.0
+      - 1.0
+    layout_merge_bboxes_mode: large
+    label_task_mapping:
+      text:
+        - abstract
+        - algorithm
+        - content
+        - doc_title
+        - figure_title
+        - paragraph_title
+        - reference_content
+        - text
+        - vertical_text
+        - vision_footnote
+        - seal
+        - formula_number
+      table:
+        - table
+      formula:
+        - display_formula
+        - inline_formula
+      skip:
+        - chart
+        - image
+      abandon:
+        - header
+        - footer
+        - number
+        - footnote
+        - aside_text
+        - reference
+        - footer_image
+        - header_image
+    id2label:
+      0: abstract
+      1: algorithm
+      2: aside_text
+      3: chart
+      4: content
+      5: display_formula
+      6: doc_title
+      7: figure_title
+      8: footer
+      9: footer_image
+      10: footnote
+      11: formula_number
+      12: header
+      13: header_image
+      14: image
+      15: inline_formula
+      16: number
+      17: paragraph_title
+      18: reference
+      19: reference_content
+      20: seal
+      21: table
+      22: text
+      23: vertical_text
+      24: vision_footnote
